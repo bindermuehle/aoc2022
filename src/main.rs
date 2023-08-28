@@ -1,6 +1,6 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Hash, Eq, PartialEq, Clone, Copy)]
 struct Item(u8);
 
 impl TryFrom<u8> for Item {
@@ -26,22 +26,22 @@ impl Item {
 fn main() {
     let mut sum: usize = 0;
     let contents = std::fs::read_to_string("input.txt").unwrap();
+    let mut group = HashMap::new();
 
     contents.lines().for_each(|line| {
-        let (first, second) = line.split_at(line.len() / 2);
-        let first = first
+        for item in line
             .bytes()
             .filter_map(|i| Item::try_from(i).ok())
-            .collect::<HashSet<Item>>();
-        let second = second
-            .bytes()
-            .filter_map(|i| Item::try_from(i).ok())
-            .collect::<HashSet<Item>>();
-        first.into_iter().for_each(|x| {
-            if second.contains(&x) {
-                sum += x.score();
+            .collect::<HashSet<Item>>()
+        {
+            let counter = group.entry(item).or_insert(0);
+            *counter += 1;
+            if *counter == 3 {
+                sum += item.score();
+                group.clear();
+                break;
             }
-        });
+        }
     });
     println!("{}", sum);
 }
