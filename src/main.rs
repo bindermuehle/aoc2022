@@ -1,7 +1,8 @@
 use nom::{
     branch::alt,
-    character::complete::{anychar, char, digit1, newline, space1},
-    combinator::opt,
+    bytes::complete::tag,
+    character::complete::{anychar, char, digit1, line_ending, newline, space1},
+    combinator::{eof, opt},
     error::ErrorKind,
     multi::{many0, many1},
     sequence::{delimited, tuple},
@@ -15,6 +16,44 @@ struct Cargo(char);
 struct Ship {
     cargo: Vec<Vec<Option<Cargo>>>,
 }
+
+#[derive(Debug, PartialEq, Clone)]
+struct Instruction {
+    from: usize,
+    to: usize,
+    quantity: usize,
+}
+
+fn parse_ship_with_instructions(input: &str) -> IResult<&str, (Ship, Vec<Instruction>)> {
+    let (rest, ship) = parse_ship(input)?;
+    let (rest, _) = many1(line_ending)(rest)?;
+    let (rest, instructions) = many1(parse_instruction)(rest)?;
+    Ok((rest, (ship, instructions)))
+}
+
+fn parse_instruction(input: &str) -> IResult<&str, Instruction> {
+    let (rest, _) = tag("move")(input)?;
+    let (rest, _) = space1(rest)?;
+    let (rest, quantity) = digit1(rest)?;
+    let (rest, _) = space1(rest)?;
+    let (rest, _) = tag("from")(rest)?;
+    let (rest, _) = space1(rest)?;
+    let (rest, from) = digit1(rest)?;
+    let (rest, _) = space1(rest)?;
+    let (rest, _) = tag("to")(rest)?;
+    let (rest, _) = space1(rest)?;
+    let (rest, to) = digit1(rest)?;
+    let (rest, _) = alt((line_ending, eof))(rest)?;
+    Ok((
+        rest,
+        Instruction {
+            from: from.parse().unwrap(),
+            to: to.parse().unwrap(),
+            quantity: quantity.parse().unwrap(),
+        },
+    ))
+}
+
 fn parse_empty_spot(input: &str) -> IResult<&str, Option<Cargo>> {
     match tuple((char(' '), char(' '), char(' ')))(input) {
         Ok((rest, _)) => Ok((rest, None)),
@@ -65,9 +104,11 @@ fn parse_ship(input: &str) -> IResult<&str, Ship> {
 }
 
 fn main() {
-    println!("Hello, world!");
+    let input = std::fs::read_to_string("input.txt").unwrap();
+    let (_, (ship, instruction)) = parse_ship_with_instructions(&input).unwrap();
+    println!("{:?}", ship);
+    println!("{:?}", instruction);
 }
-
 #[cfg(test)]
 mod test {
 
@@ -113,6 +154,31 @@ mod test {
                         vec![Some(Cargo('N')), Some(Cargo('C')), None],
                         vec![Some(Cargo('Z')), Some(Cargo('M')), Some(Cargo('P'))]
                     ]
+                }
+            ))
+        );
+    }
+    #[test]
+    fn test_parse_instruction() {
+        assert_eq!(
+            parse_instruction("move 1 from 2 to 3\n"),
+            Ok((
+                "",
+                Instruction {
+                    from: 2,
+                    to: 3,
+                    quantity: 1
+                }
+            ))
+        );
+        assert_eq!(
+            parse_instruction("move 1 from 2 to 3"),
+            Ok((
+                "",
+                Instruction {
+                    from: 2,
+                    to: 3,
+                    quantity: 1
                 }
             ))
         );
