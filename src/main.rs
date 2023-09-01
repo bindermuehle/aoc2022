@@ -36,6 +36,28 @@ impl Ship {
         });
         Ship { cargo: cargo }
     }
+    fn apply(&mut self, instruction: Instruction) -> () {
+        for c in (0..instruction.quantity)
+            .map(|_| self.cargo[instruction.from - 1].pop().unwrap())
+            .collect::<Vec<Cargo>>()
+            .into_iter()
+            .rev()
+        {
+            self.cargo[instruction.to - 1].push(c);
+        }
+    }
+    fn to_string(&self) -> String {
+        self.cargo
+            .iter()
+            .map(|row| {
+                if let Some(container) = row.last() {
+                    return Some(container.0);
+                }
+                None
+            })
+            .filter_map(|x| x)
+            .collect()
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -126,10 +148,14 @@ fn parse_ship(input: &str) -> IResult<&str, Ship> {
 
 fn main() {
     let input = std::fs::read_to_string("input.txt").unwrap();
-    let (_, (ship, instruction)) = parse_ship_with_instructions(&input).unwrap();
-    println!("{:?}", ship);
-    println!("{:?}", instruction);
+    let (_, (mut ship, instruction)) = parse_ship_with_instructions(&input).unwrap();
+
+    for instruction in instruction {
+        ship.apply(instruction);
+    }
+    println!("{:?}", ship.to_string());
 }
+
 #[cfg(test)]
 mod test {
 
