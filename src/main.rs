@@ -1,37 +1,92 @@
-use std::{collections::HashSet, hash};
-
 use nom::{bytes::complete::tag, character::complete::line_ending, IResult};
+use std::collections::HashSet;
+use std::ops::{Add, Sub};
 
 #[derive(Debug)]
 struct Bridge {
-    head: (i32, i32),
-    tail: (i32, i32),
-    visited_tail: HashSet<(i32, i32)>,
+    head: Knot,
+    knots: Vec<Knot>,
+    visited_tail: HashSet<Knot>,
 }
 
 impl Bridge {
     fn new() -> Self {
         let mut visited_tail = HashSet::new();
-        visited_tail.insert((0, 0));
+        visited_tail.insert(Knot::new());
         Bridge {
-            head: (0, 0),
-            tail: (0, 0),
+            head: Knot::new(),
+            knots: vec![Knot::new(); 9],
             visited_tail,
         }
     }
     fn apply(&mut self, direction: (i32, i32)) {
-        self.head = (self.head.0 + direction.0, self.head.1 + direction.1);
-        let mut x = self.head.0 - self.tail.0;
-        let mut y = self.head.1 - self.tail.1;
-        if x.abs() > 1 || y.abs() > 1 {
-            if x.abs() > 0 {
-                x /= x.abs();
+        self.head = self.head
+            + Knot {
+                x: direction.0,
+                y: direction.1,
+            };
+        let mut current = self.head;
+        self.knots.iter_mut().for_each(|k| {
+            k.follow(current);
+            current = *k;
+        });
+        //self.print();
+        self.visited_tail.insert(current.clone());
+    }
+    #[allow(dead_code)]
+    fn print(&self) {
+        let mut grid = vec![vec![".".to_string(); 50]; 50];
+        println!("{}", vec!["-"; 50].join(""));
+        grid[(self.head.y + 25) as usize][(self.head.x + 25) as usize] = "H".to_string();
+        self.knots.iter().enumerate().for_each(|(i, k)| {
+            grid[(k.y + 25) as usize][(k.x + 25) as usize] = (i + 1).to_string();
+        });
+        grid.iter().rev().for_each(|row| {
+            println!("{}", row.join(""));
+        });
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct Knot {
+    x: i32,
+    y: i32,
+}
+
+impl Knot {
+    fn new() -> Self {
+        Knot { x: 0, y: 0 }
+    }
+    fn follow(&mut self, other: Self) {
+        let mut diff = other - *self;
+
+        if diff.x.abs() > 1 || diff.y.abs() > 1 {
+            if diff.x.abs() > 0 {
+                diff.x /= diff.x.abs();
             }
-            if y.abs() > 0 {
-                y /= y.abs();
+            if diff.y.abs() > 0 {
+                diff.y /= diff.y.abs();
             }
-            self.tail = (self.tail.0 + x, self.tail.1 + y);
-            self.visited_tail.insert(self.tail);
+            *self = *self + diff;
+        }
+    }
+}
+
+impl Add for Knot {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Knot {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+impl Sub for Knot {
+    type Output = Self;
+    fn sub(self, other: Self) -> Self {
+        Knot {
+            x: self.x - other.x,
+            y: self.y - other.y,
         }
     }
 }
@@ -46,10 +101,10 @@ fn main() {
         .map(|(direction, amount)| {
             (0..*amount)
                 .map(|_| match direction {
-                    Direction::R => (1, 0),
-                    Direction::L => (-1, 0),
-                    Direction::U => (0, 1),
-                    Direction::D => (0, -1),
+                    Direction::Right => (1, 0),
+                    Direction::Left => (-1, 0),
+                    Direction::Up => (0, 1),
+                    Direction::Down => (0, -1),
                 })
                 .collect::<Vec<(i32, i32)>>()
         })
@@ -62,10 +117,10 @@ fn main() {
 
 #[derive(Debug)]
 enum Direction {
-    R,
-    L,
-    U,
-    D,
+    Right,
+    Left,
+    Up,
+    Down,
 }
 
 fn parse_direction(input: &str) -> IResult<&str, Direction> {
@@ -73,10 +128,10 @@ fn parse_direction(input: &str) -> IResult<&str, Direction> {
     use Direction::*;
 
     alt((tag("R"), tag("L"), tag("U"), tag("D")))(input).map(|(input, direction)| match direction {
-        "R" => (input, R),
-        "L" => (input, L),
-        "U" => (input, U),
-        "D" => (input, D),
+        "R" => (input, Right),
+        "L" => (input, Left),
+        "U" => (input, Up),
+        "D" => (input, Down),
         _ => unreachable!(),
     })
 }
