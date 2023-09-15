@@ -19,14 +19,12 @@ const CYCLES: [usize; 6] = [20, 60, 100, 140, 180, 220];
 struct CPU {
     register: i32,
     program_counter: usize,
-    result: i32,
 }
 impl CPU {
     fn new() -> Self {
         CPU {
             register: 1,
             program_counter: 0,
-            result: 0,
         }
     }
     fn execute_command(&mut self, command: &Command) {
@@ -40,11 +38,20 @@ impl CPU {
     }
     fn increase_counter(&mut self, amount: usize) {
         (1..=amount).for_each(|_| {
+            self.print();
             self.program_counter += 1;
-            if CYCLES.contains(&(&self.program_counter)) {
-                self.result += self.register * self.program_counter as i32;
-            }
         });
+    }
+    fn print(&self) {
+        let position = &self.program_counter % 40;
+        if position == 0 && self.program_counter != 0 {
+            print!("\n");
+        }
+        if position as i32 >= self.register - 1 && position as i32 <= self.register + 1 {
+            print!("#");
+        } else {
+            print!(".");
+        }
     }
 }
 
@@ -55,7 +62,6 @@ fn main() {
     commands.iter().for_each(|command| {
         cpu.execute_command(command);
     });
-    println!("Result: {}, Cycles {}", cpu.result, cpu.program_counter);
 }
 
 fn parse_commands(input: &str) -> IResult<&str, Vec<Command>> {
