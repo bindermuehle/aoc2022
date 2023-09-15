@@ -14,8 +14,6 @@ enum Command {
     Noop,
 }
 
-const CYCLES: [usize; 6] = [20, 60, 100, 140, 180, 220];
-
 struct CPU {
     register: i32,
     program_counter: usize,

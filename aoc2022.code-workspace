@@ -1,0 +1,39 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "day1"
+		},
+		{
+			"path": "day2"
+		},
+		{
+			"path": "day3"
+		},
+		{
+			"path": "day4"
+		},
+		{
+			"path": "day5"
+		},
+		{
+			"path": "day6"
+		},
+		{
+			"path": "day7"
+		},
+		{
+			"path": "day8"
+		},
+		{
+			"path": "day9"
+		},
+		{
+			"path": "day10"
+		}
+
+	],
+	"settings": {}
+}
