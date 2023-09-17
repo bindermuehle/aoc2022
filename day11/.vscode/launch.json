@@ -15,12 +15,12 @@
           "--package=day11"
         ],
         "filter": {
-          "name": "day1",
+          "name": "day11",
           "kind": "bin"
         }
       },
       "args": [],
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
     },
     {
       "type": "lldb",
@@ -34,45 +34,7 @@
           "--package=day11"
         ],
         "filter": {
-          "name": "day1",
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    }, 
-
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug executable 'day1'",
-      "cargo": {
-        "args": [
-          "build",
-          "--bin=day1",
-          "--package=day1"
-        ],
-        "filter": {
-          "name": "day1",
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in executable 'day1'",
-      "cargo": {
-        "args": [
-          "test",
-          "--no-run",
-          "--bin=day1",
-          "--package=day1"
-        ],
-        "filter": {
-          "name": "day1",
+          "name": "day11",
           "kind": "bin"
         }
       },
