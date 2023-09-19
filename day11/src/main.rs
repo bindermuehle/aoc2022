@@ -3,7 +3,7 @@ use std::mem;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{char, line_ending, space0, space1, u32},
+    character::complete::{char, line_ending, space0, space1, u64},
     combinator::{map, opt},
     multi::many1,
     sequence::{delimited, preceded, terminated, tuple},
@@ -12,14 +12,14 @@ use nom::{
 #[derive(Debug)]
 enum Value {
     Old,
-    Number(u32),
+    Number(u64),
 }
 
 impl Value {
     fn parse(input: &str) -> IResult<&str, Value> {
         let (input, value) = alt((
             map(tag("old"), |_| Value::Old),
-            map(u32, |n: u32| Value::Number(n)),
+            map(u64, |n: u64| Value::Number(n)),
         ))(input)?;
         Ok((input, value))
     }
@@ -44,12 +44,12 @@ impl Operation {
 
 #[derive(Debug)]
 struct Monkey {
-    number: u32,
-    items: Vec<u32>,
+    number: u64,
+    items: Vec<u64>,
     operation: Operation,
-    devisable: u32,
-    throw: (u32, u32),
-    inspections: u32,
+    devisable: u64,
+    throw: (u64, u64),
+    inspections: u64,
 }
 
 impl Monkey {
@@ -71,7 +71,7 @@ impl Monkey {
             },
         ))
     }
-    fn operation(&mut self, number: u32) -> u32 {
+    fn operation(&mut self, number: u64) -> u64 {
         match self.operation.operation {
             '+' => match self.operation.value {
                 Value::Old => number + number,
@@ -84,12 +84,13 @@ impl Monkey {
             _ => unreachable!(),
         }
     }
-    fn process_items(&mut self) -> Vec<(usize, u32)> {
-        self.inspections = self.inspections + self.items.len() as u32;
+    fn process_items(&mut self, divisor_product: u128) -> Vec<(usize, u64)> {
+        self.inspections = self.inspections + self.items.len() as u64;
         let mut items = vec![];
         let old_items = mem::replace(&mut self.items, vec![]);
         old_items.iter().for_each(|number| {
-            let new_number = self.operation(*number) / 3;
+            let mut new_number = number % divisor_product as u64;
+            new_number = self.operation(new_number);
             if new_number % self.devisable == 0 {
                 items.push((self.throw.0 as usize, new_number));
             } else {
@@ -103,10 +104,14 @@ impl Monkey {
 fn main() {
     let input = std::fs::read_to_string("input.txt").unwrap();
     let (_, mut monkeys) = parse_monkeys(&input).unwrap();
-    (0..20).for_each(|_| {
+    let divisor_product = monkeys
+        .iter()
+        .map(|m| m.devisable as u128)
+        .product::<u128>();
+    (0..10_000).for_each(|_| {
         (0..monkeys.len()).for_each(|i| {
             monkeys[i]
-                .process_items()
+                .process_items(divisor_product)
                 .iter()
                 .for_each(|(monkey_num, number)| {
                     monkeys[*monkey_num].items.push(*number);
@@ -114,9 +119,13 @@ fn main() {
         });
     });
     monkeys.sort_by(|a, b| a.inspections.cmp(&b.inspections));
+    monkeys
+        .iter()
+        .for_each(|m| println!("monkey {} {}", m.number, m.inspections));
     println!(
         "monkeybusiness = {}",
-        monkeys[monkeys.len() - 1].inspections * monkeys[monkeys.len() - 2].inspections
+        monkeys[monkeys.len() - 1].inspections as u128
+            * monkeys[monkeys.len() - 2].inspections as u128
     );
 }
 
@@ -124,13 +133,13 @@ fn parse_monkeys(input: &str) -> IResult<&str, Vec<Monkey>> {
     many1(terminated(Monkey::parse, opt(line_ending)))(input)
 }
 
-fn parse_monkey_number(input: &str) -> IResult<&str, u32> {
-    delimited(tag("Monkey "), u32, tuple((char(':'), line_ending)))(input)
+fn parse_monkey_number(input: &str) -> IResult<&str, u64> {
+    delimited(tag("Monkey "), u64, tuple((char(':'), line_ending)))(input)
 }
-fn parse_list_item(input: &str) -> IResult<&str, u32> {
-    preceded(space0, u32)(input)
+fn parse_list_item(input: &str) -> IResult<&str, u64> {
+    preceded(space0, u64)(input)
 }
-fn parse_starting_items(input: &str) -> IResult<&str, Vec<u32>> {
+fn parse_starting_items(input: &str) -> IResult<&str, Vec<u64>> {
     let (input, numbers) = preceded(
         tuple((space1, tag("Starting items:"))),
         terminated(many1(tuple((parse_list_item, opt(char(','))))), tag("\n")),
@@ -145,14 +154,14 @@ fn parse_operation(input: &str) -> IResult<&str, Operation> {
     Ok((input, operation))
 }
 
-fn parse_devisible(input: &str) -> IResult<&str, u32> {
+fn parse_devisible(input: &str) -> IResult<&str, u64> {
     delimited(
         tuple((space1, tag("Test: divisible by "))),
-        u32,
+        u64,
         line_ending,
     )(input)
 }
-fn parse_throw_line(input: &str) -> IResult<&str, (bool, u32)> {
+fn parse_throw_line(input: &str) -> IResult<&str, (bool, u64)> {
     tuple((
         map(
             delimited(
@@ -166,11 +175,11 @@ fn parse_throw_line(input: &str) -> IResult<&str, (bool, u32)> {
                 _ => unreachable!(),
             },
         ),
-        delimited(tag("throw to monkey "), u32, line_ending),
+        delimited(tag("throw to monkey "), u64, line_ending),
     ))(input)
 }
 
-fn parse_throw(input: &str) -> IResult<&str, (u32, u32)> {
+fn parse_throw(input: &str) -> IResult<&str, (u64, u64)> {
     let (input, (_, first)) = parse_throw_line(input)?;
     let (input, (_, second)) = parse_throw_line(input)?;
     Ok((input, (first, second)))
