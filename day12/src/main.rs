@@ -29,12 +29,12 @@ impl Map {
             })
         });
     }
-    fn find_shortest_path(&self) -> u64 {
+    fn find_shortest_path(&self, start: Coordinate) -> u64 {
         let mut visited: HashSet<Coordinate> = HashSet::new();
         let mut queue: VecDeque<Position> = VecDeque::new();
         let mut count = u64::MAX;
         queue.push_back(Position {
-            coordinate: self.start,
+            coordinate: start,
             level: 0,
             steps: 0,
         });
@@ -77,6 +77,13 @@ impl Map {
         }
         return count;
     }
+    fn find_most_scenic_path(&self) -> Option<u64> {
+        self.map
+            .indexed_iter()
+            .filter(|((row, col), cell)| cell.level == 0)
+            .map(|(cord, _)| self.find_shortest_path(cord))
+            .min()
+    }
 }
 struct Position {
     coordinate: Coordinate,
@@ -103,7 +110,7 @@ impl TryFrom<char> for Level {
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'a'..='z' => Ok(Level {
-                level: c as u8 - 'a' as u8 + 1,
+                level: c as u8 - 'a' as u8,
                 kind: Kind::Default,
             }),
             'S' => Ok(Level {
@@ -111,7 +118,7 @@ impl TryFrom<char> for Level {
                 kind: Kind::Start,
             }),
             'E' => Ok(Level {
-                level: 'z' as u8 - 'a' as u8 + 1,
+                level: 'z' as u8 - 'a' as u8,
                 kind: Kind::End,
             }),
             _ => Err(format!("Invalid character: {}", c)),
@@ -127,6 +134,8 @@ fn main() {
     );
 
     map.parse(&input);
-    let count = map.find_shortest_path();
-    println!("Part 1: {}", count);
+    let count = map.find_most_scenic_path();
+    if let Some(count) = count {
+        println!("Part 2: {}", count);
+    }
 }
