@@ -1,14 +1,15 @@
+use core::fmt;
 use std::cmp::Ordering;
 
 use nom::branch::alt;
-use nom::character::complete::{char, line_ending, u32};
+use nom::character::complete::{char, multispace1, u32};
 
 use nom::combinator::map;
 use nom::multi::separated_list1;
-use nom::sequence::{delimited, terminated, tuple};
+use nom::sequence::delimited;
 use nom::{multi::separated_list0, IResult};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 enum Unit {
     Number(u32),
     List(Vec<Unit>),
@@ -29,20 +30,33 @@ impl Unit {
     }
 }
 
+impl fmt::Debug for Unit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Unit::Number(n) => write!(f, "{}", n),
+            Unit::List(l) => f.debug_list().entries(l).finish(),
+        }
+    }
+}
+
 fn main() {
+    let (_, deviders) = parse_distress_signal(
+        "[[2]]
+        [[6]]",
+    )
+    .unwrap();
+
     let input = std::fs::read_to_string("input.txt").unwrap();
-    let (_, signal) = parse_distress_signal(&input).unwrap();
-    let count: usize = signal
+    let (_, mut signal) = parse_distress_signal(&input).unwrap();
+    signal.extend_from_slice(&deviders);
+    signal.sort();
+    let v: usize = signal
         .iter()
         .enumerate()
-        .map(|(i, (a, b))| {
-            if a < b {
-                return i + 1;
-            }
-            0
-        })
-        .sum();
-    println!("part 1: {}", count);
+        .map(|(i, u)| deviders.iter().find(|d| *d == u).map(|_| i + 1))
+        .filter_map(|f| f)
+        .product();
+    println!("Part2: {:?}", v);
 }
 
 fn parse_unit_list(input: &str) -> IResult<&str, Vec<Unit>> {
@@ -53,14 +67,8 @@ fn parse_unit_list(input: &str) -> IResult<&str, Vec<Unit>> {
     )(input)
 }
 
-fn parse_unit_tuple(input: &str) -> IResult<&str, (Unit, Unit)> {
-    tuple((
-        map(terminated(parse_unit_list, line_ending), |l| Unit::List(l)),
-        map(terminated(parse_unit_list, line_ending), |l| Unit::List(l)),
-    ))(input)
-}
-fn parse_distress_signal(input: &str) -> IResult<&str, Vec<(Unit, Unit)>> {
-    separated_list1(line_ending, parse_unit_tuple)(input)
+fn parse_distress_signal(input: &str) -> IResult<&str, Vec<Unit>> {
+    separated_list1(multispace1, map(parse_unit_list, |l| Unit::List(l)))(input)
 }
 
 impl PartialOrd for Unit {
@@ -121,21 +129,5 @@ mod test {
                 ]
             ))
         );
-    }
-    #[test]
-    fn test_parse_separated_tuple() {
-        assert_eq!(
-            parse_unit_tuple("[[1],[2,3,4]]\n[[1],4]\n"),
-            Ok((
-                "",
-                (
-                    Unit::List(vec![
-                        Unit::List(vec![(Unit::Number(1))]),
-                        Unit::List(vec![Unit::Number(2), Unit::Number(3), Unit::Number(4)])
-                    ]),
-                    Unit::List(vec![Unit::List(vec![Unit::Number(1)]), Unit::Number(4)])
-                )
-            ))
-        )
     }
 }
