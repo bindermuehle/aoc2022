@@ -10,7 +10,7 @@ use nom::{
     sequence::{separated_pair, terminated},
     IResult,
 };
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 enum Cell {
     Rock,
     #[default]
@@ -29,17 +29,11 @@ impl Coordinate {
 }
 #[derive(Clone)]
 struct Cave {
-    min_x: u32,
-    min_y: u32,
     map: Grid<Cell>,
 }
 struct SandIter<'a>(&'a mut Cave);
 impl SandIter<'_> {
     const FALL_DIRECTIONS: [(i32, i32); 3] = [(0, 1), (-1, 1), (1, 1)];
-
-    fn iter(&mut self) -> SandIter<'_> {
-        SandIter(self.0)
-    }
 }
 impl Iterator for SandIter<'_> {
     type Item = Coordinate;
@@ -51,8 +45,8 @@ impl Iterator for SandIter<'_> {
         while falling {
             for (dx, dy) in Self::FALL_DIRECTIONS.iter() {
                 let (nx, ny) = (x as i64 + *dx as i64, y as i64 + *dy as i64);
-                if ny as usize >= self.0.map.rows() || nx as usize >= self.0.map.cols() {
-                    return None;
+                if nx as usize >= self.0.map.cols() {
+                    self.0.add_column()
                 };
                 if nx < 0 {
                     continue;
@@ -68,16 +62,17 @@ impl Iterator for SandIter<'_> {
                 }
             }
         }
+        // println!("{:?}", self.0);
+        if x == 500 && y == 0 && self.0.map[y as usize][x as usize] == Cell::Sand {
+            return None;
+        }
         self.0.map[y as usize][x as usize] = Cell::Sand;
-        println!("{:?}", self.0);
         return Some(Coordinate(x, y));
     }
 }
 impl<'a> Cave {
-    fn new(min: Coordinate, max: Coordinate) -> Self {
+    fn new(max: Coordinate) -> Self {
         Cave {
-            min_x: min.0,
-            min_y: min.1,
             map: Grid::new((max.1 + 1) as usize, (max.0 + 1) as usize),
         }
     }
@@ -107,15 +102,39 @@ impl<'a> Cave {
     fn pour_sand(&'a mut self) -> SandIter<'a> {
         SandIter(self)
     }
+    fn add_rocky_bottom(&mut self) {
+        self.add_row(Cell::Air);
+        self.add_row(Cell::Rock);
+    }
+    fn add_row(&mut self, cell: Cell) {
+        self.map
+            .insert_row(self.map.rows(), vec![cell; self.map.cols()]);
+    }
+    fn add_column(&mut self) {
+        self.map
+            .insert_col(self.map.cols(), vec![Cell::Air; self.map.rows()]);
+        let x = self.map.rows() - 1;
+        let y = self.map.cols() - 1;
+        self.map[x][y] = Cell::Rock;
+    }
+    fn find_minx_sand(&self) -> u32 {
+        self.map
+            .indexed_iter()
+            .fold(u32::MAX, |acc, ((_, c), cell)| match cell {
+                Cell::Sand => std::cmp::min(acc, c as u32),
+                _ => acc,
+            })
+    }
 }
 
 impl Debug for Cave {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let min = self.find_minx_sand();
         for line in self.map.iter_rows() {
             writeln!(
                 f,
                 "{}",
-                line.skip(self.min_x as usize)
+                line.skip(min as usize)
                     .map(|c| match c {
                         Cell::Rock => '#',
                         Cell::Air => '.',
@@ -130,10 +149,11 @@ impl Debug for Cave {
 fn main() {
     let input = std::fs::read_to_string("input.txt").unwrap();
     let scan = parse_scan(&input).unwrap().1;
-    let (min, max) = find_edges(&scan);
-    let mut cave = Cave::new(min, max);
+    let mut cave = Cave::new(find_max(&scan));
     cave.add_rocks(scan);
+    cave.add_rocky_bottom();
     println!("count: {}", cave.emulate_sand());
+    println!("{:?}", cave);
 }
 fn parse_coordinates(input: &str) -> IResult<&str, Vec<Coordinate>> {
     terminated(separated_list1(tag(" -> "), Coordinate::parse), line_ending)(input)
@@ -141,11 +161,9 @@ fn parse_coordinates(input: &str) -> IResult<&str, Vec<Coordinate>> {
 fn parse_scan(input: &str) -> IResult<&str, Vec<Vec<Coordinate>>> {
     many1(parse_coordinates)(input)
 }
-fn find_edges(scan: &Vec<Vec<Coordinate>>) -> (Coordinate, Coordinate) {
+fn find_max(scan: &Vec<Vec<Coordinate>>) -> Coordinate {
     let mut max_x = 0;
     let mut max_y = 0;
-    let mut min_x = u32::MAX;
-    let mut min_y = u32::MAX;
     for line in scan {
         for coord in line {
             if coord.0 > max_x {
@@ -154,13 +172,7 @@ fn find_edges(scan: &Vec<Vec<Coordinate>>) -> (Coordinate, Coordinate) {
             if coord.1 > max_y {
                 max_y = coord.1;
             }
-            if coord.0 < min_x {
-                min_x = coord.0;
-            }
-            if coord.1 < min_y {
-                min_y = coord.1;
-            }
         }
     }
-    (Coordinate(min_x, min_y), Coordinate(max_x, max_y))
+    Coordinate(max_x, max_y)
 }
