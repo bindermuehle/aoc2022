@@ -1,8 +1,7 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{char, digit1},
-    combinator::{map, opt},
+    combinator::map,
     multi::many1,
     sequence::{preceded, tuple},
     IResult,
