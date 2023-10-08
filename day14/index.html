@@ -1,50 +1,8 @@
-<!DOCTYPE html>
 <html>
   <head>
-    <head> </head>
-    <style>
-      html,
-      body {
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        background: transparent;
-        font-family: "Open Sans", sans-serif;
-      }
-
-      canvas {
-        image-rendering: crisp-edges;
-        width: 100%;
-        max-width: 400px;
-        height: auto;
-      }
-    </style>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
   </head>
-
   <body>
-    <canvas id="map"></canvas>
-
-    <script type="module">
-      import init, { Cave } from "./pkg/day14.js";
-
-      async function main() {
-        // wait for wasm to be actually loaded
-        await init();
-        let cave = new Cave();
-        emulateSand = emulateSandFactory(cave);
-        window.requestAnimationFrame(emulateSand);
-      }
-      function emulateSandFactory(cave) {
-        return () => {
-          cave.step();
-          cave.render("map");
-          if (!cave.is_done()) {
-            window.requestAnimationFrame(emulateSand);
-          }
-        };
-      }
-      var emulateSand = null;
-      let cave = main();
-    </script>
+    <canvas id="canvas" height="800px" width="800px"></canvas>
   </body>
 </html>

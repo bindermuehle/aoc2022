@@ -47,5 +47,9 @@
 		},
 
 	],
-	"settings": {}
+	"settings": {
+		"rust-analyzer.linkedProjects": [
+			"./Cargo.toml"
+		]
+	}
 }
