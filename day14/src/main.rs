@@ -1,5 +1,8 @@
-use day14::Cave;
+mod cave;
 
 fn main() {
-    let cave = Cave::new();
+    let mut cave = cave::Cave::new();
+    while !cave.is_done() {
+        cave.step()
+    }
 }

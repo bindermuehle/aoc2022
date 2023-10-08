@@ -63,6 +63,22 @@ impl Webgl {
             .get_uniform_location(&program, "color")
             .ok_or("failed to get color location")?;
 
+        let vao = context
+            .create_vertex_array()
+            .ok_or("failed to create a vertex array object")?;
+        context.bind_vertex_array(Some(&vao));
+
+        context.vertex_attrib_pointer_with_i32(
+            position_attribute_location as u32,
+            2,
+            WebGl2RenderingContext::INT,
+            false,
+            0,
+            0,
+        );
+        context.enable_vertex_attrib_array(position_attribute_location as u32);
+        context.bind_vertex_array(Some(&vao));
+
         Ok(Webgl {
             context,
             position_attribute_location,
@@ -89,6 +105,7 @@ impl Webgl {
             };
 
         let verticies: [i32; 12] = [a.x, a.y, b.x, b.y, c.x, c.y, a.x, a.y, c.x, c.y, d.x, d.y];
+
         unsafe {
             let position_array_buf_view = js_sys::Int32Array::view(&verticies);
             self.context.buffer_data_with_array_buffer_view(
@@ -97,24 +114,6 @@ impl Webgl {
                 WebGl2RenderingContext::STATIC_DRAW,
             )
         }
-        let vao = self
-            .context
-            .create_vertex_array()
-            .ok_or("failed to create a vertex array object")?;
-        self.context.bind_vertex_array(Some(&vao));
-
-        self.context.vertex_attrib_pointer_with_i32(
-            self.position_attribute_location as u32,
-            2,
-            WebGl2RenderingContext::INT,
-            false,
-            0,
-            0,
-        );
-        self.context
-            .enable_vertex_attrib_array(self.position_attribute_location as u32);
-        self.context.bind_vertex_array(Some(&vao));
-
         self.context
             .uniform4fv_with_f32_array(Some(&self.color_location), rect.color.as_ref());
 

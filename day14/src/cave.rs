@@ -1,22 +1,35 @@
 use core::fmt;
-use std::fmt::{Debug, Formatter};
+use std::{
+    collections::VecDeque,
+    fmt::{Debug, Formatter},
+};
 
 use grid::Grid;
 use nom::{
     bytes::complete::tag,
-    character::complete::line_ending,
+    character::complete::{line_ending, u32},
+    combinator::map,
     multi::{many1, separated_list1},
-    sequence::terminated,
+    sequence::{separated_pair, terminated},
     IResult,
 };
+#[derive(Debug, Clone)]
+pub struct Coordinate(pub u32, pub u32);
 
-use crate::Coordinate;
+impl Coordinate {
+    fn parse(input: &str) -> IResult<&str, Coordinate> {
+        map(separated_pair(u32, tag(","), u32), |(x, y)| {
+            Coordinate(x, y)
+        })(input)
+    }
+}
 
 #[derive(Clone)]
 pub struct Cave {
     map: Grid<Cell>,
     done: bool,
-    min_x: u32,
+    pub min_x: u32,
+    pub sand: VecDeque<Coordinate>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -43,6 +56,7 @@ impl Cave {
             ),
             done: false,
             min_x: 0,
+            sand: VecDeque::new(),
         };
         cave.add_rocks(scan);
         cave.add_rocky_bottom();
@@ -74,37 +88,43 @@ impl Cave {
         });
     }
 
-    pub fn step(&mut self) -> Option<Coordinate> {
+    pub fn step(&mut self) {
         let fall_directions: [(i32, i32); 3] = [(0, 1), (-1, 1), (1, 1)];
-        let mut x = 500;
-        let mut y = 0;
-        let mut falling = true;
-        while falling {
+        self.sand.push_back(Cave::SAND_SOURCE);
+        for c in self.sand.iter_mut() {
+            let mut falling = true;
             for (dx, dy) in fall_directions.iter() {
-                let (nx, ny) = (x as i64 + *dx as i64, y as i64 + *dy as i64);
+                let (nx, ny) = (c.0 as i64 + *dx as i64, c.1 as i64 + *dy as i64);
                 if nx as usize >= self.map.cols() {
-                    self.add_column()
+                    continue;
                 };
                 if nx < 0 {
                     continue;
                 }
                 match self.map[ny as usize][nx as usize] {
                     Cell::Air => {
+                        c.0 = nx as u32;
+                        c.1 = ny as u32;
                         falling = true;
-                        x = nx as u32;
-                        y = ny as u32;
                         break;
                     }
-                    Cell::Rock | Cell::Sand => falling = false,
+                    _ => falling = false,
                 }
             }
+            if !falling {
+                self.map[c.1 as usize][c.0 as usize] = Cell::Sand;
+            }
         }
-        if x == 500 && y == 0 && self.map[y as usize][x as usize] == Cell::Sand {
+        if let Some(c) = self.sand.get(0) {
+            if self.map[c.1 as usize][c.0 as usize] == Cell::Sand {
+                self.sand.pop_front();
+            }
+        }
+        if self.map[Cave::SAND_SOURCE.1 as usize][Cave::SAND_SOURCE.0 as usize] == Cell::Sand {
             self.done = true;
         }
-        self.map[y as usize][x as usize] = Cell::Sand;
-        return Some(Coordinate(x, y));
     }
+
     pub fn add_rocky_bottom(&mut self) {
         self.add_row(Cell::Air);
         self.add_row(Cell::Rock);

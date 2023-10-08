@@ -16,19 +16,6 @@ struct Application {
     webgl: webgl::Webgl,
 }
 
-#[derive(Debug)]
-#[wasm_bindgen]
-pub struct Coordinate(u32, u32);
-
-#[wasm_bindgen]
-impl Coordinate {
-    fn parse(input: &str) -> IResult<&str, Coordinate> {
-        map(separated_pair(u32, tag(","), u32), |(x, y)| {
-            Coordinate(x, y)
-        })(input)
-    }
-}
-
 fn cave_to_webgl_adapter(cave: Vec<Vec<Cell>>) -> Vec<Rectangle> {
     cave.iter()
         .enumerate()
@@ -100,6 +87,20 @@ fn start() -> Result<(), JsValue> {
         app.borrow_mut().webgl.clear();
         rectangles.iter().for_each(|r| {
             app.borrow_mut().webgl.draw_rectangle(r).unwrap();
+        });
+        let sand = app.borrow().cave.sand.clone();
+        let min_x = app.borrow().cave.min_x;
+        sand.iter().for_each(|s| {
+            let r = Rectangle {
+                pos: IntVec2 {
+                    x: s.0 as i32 - min_x as i32,
+                    y: s.1 as i32,
+                },
+                width: 1,
+                height: 1,
+                color: [1.0, 0.0, 0.0, 1.0],
+            };
+            app.borrow_mut().webgl.draw_rectangle(&r).unwrap();
         });
         request_animation_frame(f.borrow().as_ref().unwrap());
     }));
