@@ -45,11 +45,11 @@
 		{
 			"path": "day14"
 		},
+		{
+			"path": "day15"
+		},	
 
 	],
 	"settings": {
-		"rust-analyzer.linkedProjects": [
-			"./Cargo.toml"
-		]
 	}
 }
