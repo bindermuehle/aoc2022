@@ -46,22 +46,34 @@ struct State {
     released_pressure: u64,
     time_left: u64,
     current: String,
+    elefant_current: String,
+    elefant_time_left: u64,
 }
 
 impl State {
-    fn new(current: String) -> State {
+    fn new(current: String, elefant_current: String) -> State {
         State {
             released_valves: HashSet::new(),
             released_pressure: 0,
-            time_left: 30,
+            time_left: 26,
+            elefant_time_left: 26,
             current,
+            elefant_current,
         }
     }
     fn walk(&mut self, room: &Room) {
         self.time_left -= room.connections.get(&self.current).unwrap() as &u64;
         self.current = room.name.clone();
     }
-
+    fn elefant_walk(&mut self, room: &Room) {
+        self.elefant_time_left -= room.connections.get(&self.elefant_current).unwrap() as &u64;
+        self.elefant_current = room.name.clone();
+    }
+    fn elefant_release(&mut self, pressure: u64, room: String) {
+        self.elefant_time_left -= 1;
+        self.released_valves.insert(room.clone());
+        self.released_pressure += pressure;
+    }
     fn release(&mut self, pressure: u64, room: String) {
         self.time_left -= 1;
         self.released_valves.insert(room.clone());
@@ -74,31 +86,59 @@ struct Cave {
 impl Cave {
     fn find_max_pressure(&self, state: State) -> u64 {
         let room = self.rooms.get(&state.current).unwrap();
-
-        let max = room
+        let connections: Vec<(String, u64)> = room
             .connections
+            .clone()
+            .into_iter()
+            .filter(|(name, distance)| {
+                !state.released_valves.contains(name)
+                    && self.rooms.get(name).unwrap().pressure != 0
+                    && state.time_left > distance + 1
+            })
+            .collect();
+        let elefant_room = self.rooms.get(&state.elefant_current).unwrap();
+        let elefant_connections: Vec<(String, u64)> = elefant_room
+            .connections
+            .clone()
+            .into_iter()
+            .filter(|(name, distance)| {
+                !state.released_valves.contains(name)
+                    && self.rooms.get(name).unwrap().pressure != 0
+                    && state.elefant_time_left > distance + 1
+            })
+            .collect();
+        connections
             .iter()
             .map(|(name, distance)| {
-                if state.released_valves.contains(name)
-                    || self.rooms.get(name).unwrap().pressure == 0
-                    || state.time_left < distance + 1
-                {
-                    state.released_pressure
-                } else {
-                    let next = self.rooms.get(name).unwrap();
-                    let mut new_state = state.clone();
-                    let pressure = next.pressure * (state.time_left - distance - 1);
-                    new_state.walk(next);
-                    new_state.release(pressure, name.clone());
-                    return self.find_max_pressure(new_state);
-                }
+                elefant_connections
+                    .iter()
+                    .filter_map(|(elefant_name, elefant_distance)| {
+                        if name == elefant_name {
+                            return None;
+                        }
+
+                        let mut new_state = state.clone();
+
+                        if state.time_left > distance + 1 {
+                            let next = self.rooms.get(name).unwrap();
+                            let pressure = next.pressure * (state.time_left - distance - 1);
+                            new_state.walk(next);
+                            new_state.release(pressure, name.clone());
+                        }
+                        if state.elefant_time_left > elefant_distance + 1 {
+                            let next = self.rooms.get(elefant_name).unwrap();
+                            let pressure =
+                                next.pressure * (state.elefant_time_left - elefant_distance - 1);
+                            new_state.elefant_walk(next);
+                            new_state.elefant_release(pressure, elefant_name.clone());
+                        }
+                        Some(self.find_max_pressure(new_state))
+                    })
+                    .max()
+                    .unwrap_or(state.released_pressure)
             })
-            .max();
-        if let Some(max) = max {
-            return max;
-        } else {
-            return state.released_pressure;
-        }
+            .max()
+            .unwrap_or(state.released_pressure)
     }
 }
 fn main() {
@@ -111,7 +151,7 @@ fn main() {
         })
         .collect();
     populate_network(&mut rooms);
-    let state = State::new(rooms.get("AA").unwrap().name.clone());
+    let state = State::new("AA".to_string(), "AA".to_string());
     let cave = Cave { rooms };
     let num = cave.find_max_pressure(state);
     println!("{}", num);
