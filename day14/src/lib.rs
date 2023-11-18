@@ -65,7 +65,7 @@ fn start() -> Result<(), JsValue> {
 
     let cave = Cave::new();
     let cells = cave.get_printable_cells();
-    //console::log_1(&format!("{:?}", cave).into());
+    console::log_1(&format!("{:?}", cave).into());
     let webgl = webgl::Webgl::new(canvas, cells[0].len() as i32, cells.len() as i32)?;
 
     let app = Rc::new(RefCell::new(Application {
